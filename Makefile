@@ -1,4 +1,4 @@
-EXEC = proj1
+EXEC = ipkcpc
 CXX = g++
 CXXFLAGS = -Wall -Wextra -std=c++20
 
