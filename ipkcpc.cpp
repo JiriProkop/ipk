@@ -2,6 +2,7 @@
 #include <bits/stdc++.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,27 +25,43 @@ enum stat_codes {
     stat_error,
 };
 
+bool toclose = false;
+int client_socket;
+
+static void sig_handler(int _) {
+    (void)_;
+    if (toclose) {
+        close(client_socket);
+    }
+    exit(EXIT_FAILURE);
+}
+
 void tcp_com(struct sockaddr_in server_address) {
-    int client_socket, bytestx, bytesrx;
+    int bytestx, bytesrx;
     if ((client_socket = socket(AF_INET, SOCK_STREAM, 0)) <= 0) {
-        perror("ERROR: socket");
+        perror("ERR: socket\n");
         exit(EXIT_FAILURE);
     }
     if (connect(client_socket, (const struct sockaddr *)&server_address, sizeof(server_address)) != 0) {
-        perror("ERROR: connect");
+        perror("ERR: connect");
         exit(EXIT_FAILURE);
     }
+    toclose = true;
     char buf[BUFSIZE] = {0};
-    while (fgets(buf, BUFSIZE, stdin) != NULL) { // nacteni zprav od uzivatele
+    // send each problem(=line) to server and print answer
+    while (fgets(buf, BUFSIZE, stdin) != NULL) {
         bytestx = send(client_socket, buf, strlen(buf), 0);
         if (bytestx < 0) {
-            perror("ERROR in sendto");
+            perror("ERR: in sendto\n");
+            close(client_socket);
             exit(EXIT_FAILURE);
         }
         std::fill_n(buf, BUFSIZE, 0);
         bytesrx = recv(client_socket, buf, BUFSIZE, 0);
         if (bytesrx < 0) {
-            perror("ERROR in recvfrom");
+            close(client_socket);
+            perror("ERR: in recvfrom\n");
+            exit(EXIT_FAILURE);
         }
         printf("%s", buf);
         std::fill_n(buf, BUFSIZE, 0);
@@ -53,47 +70,38 @@ void tcp_com(struct sockaddr_in server_address) {
 }
 
 void udp_com(struct sockaddr_in server_address) {
-    int client_socket, bytestx, bytesrx;
+    int bytestx, bytesrx;
     if ((client_socket = socket(AF_INET, SOCK_DGRAM, 0)) <= 0) {
-        perror("ERROR: socket");
+        perror("ERR: socket\n");
         exit(EXIT_FAILURE);
     }
     socklen_t serverlen = sizeof(server_address);
     char readbuf[UDP_READBUF_SIZE] = {0};
     char solve[UDP_MSG_SIZE] = {0};
-
+    // send each problem(=line) to server and print answer
     while (fgets(readbuf, UDP_READBUF_SIZE, stdin) != NULL) {
         sprintf(solve, "%c%c%s", op_request, (int)strlen(readbuf), readbuf);
-        printf("Msg in ascii: ");
-        for (size_t i = 0; i < strlen(readbuf) + 2; i++) {
-            printf("%d ", solve[i]);
-        }
-        printf("\n");
-        /* odeslani zpravy na server */
+
         bytestx = sendto(client_socket, solve, UDP_MSG_SIZE, 0, (struct sockaddr *)&server_address, serverlen);
         if (bytestx < 0) {
-            perror("ERROR: sendto");
+            perror("ERR: sendto\n");
             exit(EXIT_FAILURE);
         }
-        printf("msg send\n");
         std::fill_n(solve, UDP_MSG_SIZE, 0);
-        /* prijeti odpovedi a jeji vypsani */
+
         bytesrx = recvfrom(client_socket, solve, UDP_MSG_SIZE, 0, (struct sockaddr *)&server_address, &serverlen);
-        printf("msg received\n");
         if (bytesrx < 0) {
-            perror("ERROR: recvfrom");
+            perror("ERR: recvfrom\n");
             exit(EXIT_FAILURE);
         }
-        // removing codes from msg
-        solve[0] = (char)1;
-        solve[1] = (char)1;
-        solve[2] = (char)1;
-
-        printf("Echo from server:%s", solve);
+        if (solve[0] == op_request || solve[1] == stat_error) {
+            fprintf(stderr, "ERR:%s\n", solve + 3); // skipping the first 3 flag chars
+        } else {
+            printf("OK:%s\n", solve + 3);
+        }
         std::fill_n(readbuf, UDP_READBUF_SIZE, 0);
         std::fill_n(solve, UDP_MSG_SIZE, 0);
     }
-
 }
 
 int main(int argc, const char *argv[]) {
@@ -101,6 +109,7 @@ int main(int argc, const char *argv[]) {
     const char *server_hostname;
     struct hostent *server;
     struct sockaddr_in server_address;
+    signal(SIGINT, sig_handler);
 
     // test vstupnich parametru:
     if (argc != 7 || strcmp("-h", argv[1]) != 0 || strcmp("-p", argv[3]) != 0 || strcmp("-m", argv[5]) != 0 ||
@@ -127,7 +136,6 @@ int main(int argc, const char *argv[]) {
     if (argv[6][0] == 't') {
         tcp_com(server_address);
     } else {
-        printf("udp mode\n");
         udp_com(server_address);
     }
 
