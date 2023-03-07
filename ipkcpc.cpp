@@ -31,9 +31,10 @@ int client_socket;
 static void sig_handler(int _) {
     (void)_;
     if (toclose) {
+        send(client_socket, "BYE\n", strlen("BYE\n"), 0);
         close(client_socket);
     }
-    exit(EXIT_FAILURE);
+    exit(EXIT_SUCCESS);
 }
 
 void tcp_com(struct sockaddr_in server_address) {
