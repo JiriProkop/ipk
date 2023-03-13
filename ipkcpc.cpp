@@ -120,7 +120,7 @@ void udp_com(struct sockaddr_in server_address) {
             perror("ERR: recvfrom\n");
             exit(EXIT_FAILURE);
         }
-        if (solve[0] == op_request || solve[1] == stat_error) {
+        if (solve[1] == stat_error) {
             fprintf(stderr, "ERR:%s\n", solve + 3); // skipping the first 3 flag chars
         } else {
             printf("OK:%s\n", solve + 3);
@@ -136,7 +136,7 @@ int main(int argc, const char *argv[]) {
     struct hostent *server;
     struct sockaddr_in server_address;
     signal(SIGINT, sig_handler);
-
+    //TODO check port num
     // param validation
     if (argc != 7 || strcmp("-h", argv[1]) != 0 || strcmp("-p", argv[3]) != 0 || strcmp("-m", argv[5]) != 0 ||
         (strcmp(argv[6], "udp") != 0 && strcmp(argv[6], "tcp") != 0)) {
@@ -146,7 +146,10 @@ int main(int argc, const char *argv[]) {
     }
     server_hostname = argv[2];
     port_number = atoi(argv[4]);
-
+    if(!(port_number > 0 && port_number <= 65535)) { // unsgined 16 bit range
+        fprintf(stderr, "Port number has to be within bounds of 16bit unsigned integer!\n");
+        exit(EXIT_FAILURE);
+    }
     // getting host by dns
     if ((server = gethostbyname(server_hostname)) == NULL) {
         fprintf(stderr, "ERROR: no such host as %s\n", server_hostname);
