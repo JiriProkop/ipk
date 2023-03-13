@@ -1,10 +1,16 @@
+#include <stdio.h>
+#ifndef __linux__
+fprintf(stderr, "Requires linux OS!!\n");
+exit(-1);
+// Socket binding works differently on Windows.
+#endif
+
 #include <arpa/inet.h>
 #include <bits/stdc++.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -15,11 +21,17 @@
 #define UDP_READBUF_SIZE 10
 #define UDP_MSG_SIZE 12
 
+/*
+    @enum opcodes for Calculator UDP protocol
+*/
 enum opcodes {
     op_request,
     op_response,
 };
 
+/*
+   @enum status codes for Calculator UDP protocol
+*/
 enum stat_codes {
     stat_ok,
     stat_error,
@@ -28,6 +40,9 @@ enum stat_codes {
 bool toclose = false;
 int client_socket;
 
+/*
+    Interrupt signal handlerer.
+*/
 static void sig_handler(int _) {
     (void)_;
     if (toclose) {
@@ -37,6 +52,11 @@ static void sig_handler(int _) {
     exit(EXIT_SUCCESS);
 }
 
+/*
+    Communicate with server by tcp.
+
+    @param server_address server address where the server is.
+*/
 void tcp_com(struct sockaddr_in server_address) {
     int bytestx, bytesrx;
     if ((client_socket = socket(AF_INET, SOCK_STREAM, 0)) <= 0) {
@@ -70,6 +90,11 @@ void tcp_com(struct sockaddr_in server_address) {
     close(client_socket);
 }
 
+/*
+    Communicate with server by udp.
+
+    @param server_address server address where the server is.
+*/
 void udp_com(struct sockaddr_in server_address) {
     int bytestx, bytesrx;
     if ((client_socket = socket(AF_INET, SOCK_DGRAM, 0)) <= 0) {
@@ -112,7 +137,7 @@ int main(int argc, const char *argv[]) {
     struct sockaddr_in server_address;
     signal(SIGINT, sig_handler);
 
-    // test vstupnich parametru:
+    // param validation
     if (argc != 7 || strcmp("-h", argv[1]) != 0 || strcmp("-p", argv[3]) != 0 || strcmp("-m", argv[5]) != 0 ||
         (strcmp(argv[6], "udp") != 0 && strcmp(argv[6], "tcp") != 0)) {
         fprintf(stderr, "usage:\t%s -h <host> -p <port> -m <mode>\n", argv[0]);
@@ -122,13 +147,13 @@ int main(int argc, const char *argv[]) {
     server_hostname = argv[2];
     port_number = atoi(argv[4]);
 
-    /* 2. ziskani adresy serveru pomoci DNS */
+    // getting host by dns
     if ((server = gethostbyname(server_hostname)) == NULL) {
         fprintf(stderr, "ERROR: no such host as %s\n", server_hostname);
         exit(EXIT_FAILURE);
     }
 
-    /* 3. nalezeni IP adresy serveru a inicializace struktury server_address */
+    // getting server IP address
     bzero((char *)&server_address, sizeof(server_address));
     server_address.sin_family = AF_INET;
     bcopy((char *)server->h_addr, (char *)&server_address.sin_addr.s_addr, server->h_length);
