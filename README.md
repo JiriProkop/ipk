@@ -18,5 +18,13 @@ Potřeba alespoň g++ verzi 10.
 Př.:    ipkcpc -h 1.2.3.4 -p 2023 -m udp
 ```
 
+## Testování
+Pro testování jsem vybral 'pairwise' kritérium pokrytí. Pro vstupní data jsem pak na základě rozhraní zvolil následující charakteristiky.
+| Host          | Port                  | Mode          | STDIN         |
+| -----------   | -----------           |-----------    |-----------    |
+| validní       | validní               | udp           | validní       |
+| nevalidní     | < 1023 nebo > 65535   | tcp           | nevalidní     |
 
+Následně jsem použil použil [tento](https://pairwise.teremokgames.com/) nástroj na generování trojic, na základě kterých jsem vytvořil konkrétní testové vstupy.
+Na testování samotné jsem si potom vytvořil shell [skript](tests/test.sh).
 
