@@ -86,6 +86,9 @@ void tcp_com(struct sockaddr_in server_address) {
             exit(EXIT_FAILURE);
         }
         printf("%s", buf);
+        if(strcmp(buf, "BYE\n") == 0){
+            break;
+        }
         std::fill_n(buf, BUFSIZE, 0);
     } // end of while
     close(client_socket);
@@ -170,6 +173,5 @@ int main(int argc, const char *argv[]) {
     } else {
         udp_com(server_address);
     }
-
     return 0;
 }
