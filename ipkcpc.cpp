@@ -18,8 +18,9 @@ exit(-1);
 #include <unistd.h>
 
 #define BUFSIZE 1024
-#define UDP_READBUF_SIZE 10
-#define UDP_MSG_SIZE 12
+#define UDP_READBUF_SIZE 256
+#define UDP_MSG_SIZE 259
+
 
 /*
     @enum opcodes for Calculator UDP protocol
