@@ -28,3 +28,5 @@ Pro testování jsem vybral 'pairwise' kritérium pokrytí. Pro vstupní data js
 Následně jsem použil použil [tento](https://pairwise.teremokgames.com/) nástroj na generování trojic, na základě kterých jsem vytvořil konkrétní testové vstupy.
 Na testování samotné jsem si potom vytvořil shell [skript](tests/test.sh).
 
+## Zdroje
+https://git.fit.vutbr.cz/NESFIT/IPK-Projekty/src/branch/master/Stubs
