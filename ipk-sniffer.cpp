@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "argparse/argparse.hpp"
 
 /*TODO
 pridat toto do dokumentace, spolu s MIT licenci samotnou(v doc na ni muze byt jenom odkaz ale musi byt includnuta s projektem)
@@ -6,6 +7,8 @@ pridat toto do dokumentace, spolu s MIT licenci samotnou(v doc na ni muze byt je
 */
 
 int main(int argc, char *argv[]) {
+    argparse::ArgumentParser parser("IPK project 2: ZETA - network sniffer.");
+
 
     printf("hello\n");
 

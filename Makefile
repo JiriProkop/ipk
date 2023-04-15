@@ -1,4 +1,4 @@
-SNIFFER = sniffer
+SNIFFER = ipk-sniffer
 SERVER_CLIENT = ipkcpc
 CXX = g++
 CXXFLAGS = -Wall -Wextra -std=c++20
