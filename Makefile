@@ -1,14 +1,17 @@
-EXEC = ipkcpc
+SNIFFER = sniffer
+SERVER_CLIENT = ipkcpc
 CXX = g++
 CXXFLAGS = -Wall -Wextra -std=c++20
 
 
 .PHONY: clean all
 
-all: $(EXEC)
+all: $(SNIFFER)
 
-$(EXEC):
+$(SERVER_CLIENT):
+
+$(SNIFFER):
 
 clean:
-	rm -f $(EXEC)
+	rm -f $(SNIFFER) $(SERVER_CLIENT)
 
