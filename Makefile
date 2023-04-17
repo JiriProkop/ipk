@@ -10,6 +10,8 @@ all: $(SNIFFER)
 
 $(SERVER_CLIENT):
 
+LDLIBS = -lpcap
+
 $(SNIFFER):
 
 clean:
