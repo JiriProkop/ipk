@@ -1,8 +1,10 @@
 #include "argparse/argparse.hpp"
+#include <net/ethernet.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 #include <pcap.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -12,8 +14,7 @@ pridat toto do dokumentace, spolu s MIT licenci samotnou(v doc na ni muze byt je
 */
 
 pcap_t *handle;
-int linkhdrlen;
-int packets;
+int hdrlen = 14; // eth. header size
 
 void list_interfaces() {
     char errbuf[PCAP_ERRBUF_SIZE];
@@ -30,66 +31,77 @@ void list_interfaces() {
     exit(0);
 }
 
+void cleanup(int _) {
+    (void)_;
+    pcap_close(handle);
+    exit(0);
+}
+
+/*
+*	Modified function from:
+* 	SOURCE: https://vichargrave.github.io/programming/develop-a-packet-sniffer-with-libpcap/
+*	AUTHOR: Vic Hargrave
+*   Licence:
+Copyright 2023 Vic Hargrave
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 void packet_handler(u_char *user, const struct pcap_pkthdr *packethdr, const u_char *packetptr) {
+    struct ether_header *ethhdr = (struct ether_header *)packetptr;
     struct ip *iphdr;
-    struct icmp *icmphdr;
     struct tcphdr *tcphdr;
     struct udphdr *udphdr;
-    char iphdrInfo[256];
-    char srcip[256];
-    char dstip[256];
+    (void)user;
 
-    // Skip the datalink layer header and get the IP header fields.
-    packetptr += linkhdrlen;
+    packetptr += hdrlen;
     iphdr = (struct ip *)packetptr;
-    strcpy(srcip, inet_ntoa(iphdr->ip_src));
-    strcpy(dstip, inet_ntoa(iphdr->ip_dst));
-    sprintf(iphdrInfo, "ID:%d TOS:0x%x, TTL:%d IpLen:%d DgLen:%d",
-            ntohs(iphdr->ip_id), iphdr->ip_tos, iphdr->ip_ttl,
-            4 * iphdr->ip_hl, ntohs(iphdr->ip_len));
 
-    // Advance to the transport layer header then parse and display
-    // the fields based on the type of hearder: tcp, udp or icmp.
-    printf("inside of loop.\n");
+    std::string source_ip = inet_ntoa(iphdr->ip_src);
+    std::string dest_ip = inet_ntoa(iphdr->ip_dst);
+
     packetptr += 4 * iphdr->ip_hl;
+    char src_mac[18], dst_mac[18];
+    sprintf(src_mac, "%02X:%02X:%02X:%02X:%02X:%02X", ethhdr->ether_shost[0], ethhdr->ether_shost[1], ethhdr->ether_shost[2],
+            ethhdr->ether_shost[3], ethhdr->ether_shost[4], ethhdr->ether_shost[5]);
+    sprintf(dst_mac, "%02X:%02X:%02X:%02X:%02X:%02X", ethhdr->ether_dhost[0], ethhdr->ether_dhost[1], ethhdr->ether_dhost[2],
+            ethhdr->ether_dhost[3], ethhdr->ether_dhost[4], ethhdr->ether_dhost[5]);
+    std::cout << "Timestamp: " << std::put_time(std::localtime(&packethdr->ts.tv_sec), "%FT%T") << "." << std::setw(3) << std::setfill('0') << std::to_string(packethdr->ts.tv_usec).substr(0, 3) << "+01:00" << std::endl;
+    std::cout << "src MAC: " << src_mac << std::endl;
+    std::cout << "dst MAC: " << dst_mac << std::endl;
+    std::cout << "frame length: " << packethdr->caplen << std::endl;
+    std::cout << "src IP: " << source_ip << std::endl;
+    std::cout << "dst IP: " << dest_ip << std::endl;
+
     switch (iphdr->ip_p) {
         case IPPROTO_TCP:
             tcphdr = (struct tcphdr *)packetptr;
-            printf("TCP  %s:%d -> %s:%d\n", srcip, ntohs(tcphdr->th_sport),
-                   dstip, ntohs(tcphdr->th_dport));
-            printf("%s\n", iphdrInfo);
-            printf("%c%c%c%c%c%c Seq: 0x%x Ack: 0x%x Win: 0x%x TcpLen: %d\n",
-                   (tcphdr->th_flags & TH_URG ? 'U' : '*'),
-                   (tcphdr->th_flags & TH_ACK ? 'A' : '*'),
-                   (tcphdr->th_flags & TH_PUSH ? 'P' : '*'),
-                   (tcphdr->th_flags & TH_RST ? 'R' : '*'),
-                   (tcphdr->th_flags & TH_SYN ? 'S' : '*'),
-                   (tcphdr->th_flags & TH_SYN ? 'F' : '*'),
-                   ntohl(tcphdr->th_seq), ntohl(tcphdr->th_ack),
-                   ntohs(tcphdr->th_win), 4 * tcphdr->th_off);
-            printf("+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n\n");
-            packets += 1;
+            
+            std::cout << "src port: " << ntohs(tcphdr->th_sport) << std::endl;
+            std::cout << "dst port: " << ntohs(tcphdr->th_dport) << std::endl;
             break;
-
         case IPPROTO_UDP:
             udphdr = (struct udphdr *)packetptr;
-            printf("UDP  %s:%d -> %s:%d\n", srcip, ntohs(udphdr->uh_sport),
-                   dstip, ntohs(udphdr->uh_dport));
-            printf("%s\n", iphdrInfo);
-            printf("+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n\n");
-            packets += 1;
+            
+            std::cout << "src port: " << ntohs(udphdr->uh_sport) << std::endl;
+            std::cout << "dst port: " << ntohs(udphdr->uh_dport) << std::endl;
             break;
-
-        case IPPROTO_ICMP:
-            icmphdr = (struct icmp *)packetptr;
-            printf("ICMP %s -> %s\n", srcip, dstip);
-            printf("%s\n", iphdrInfo);
-            printf("Type:%d Code:%d ID:%d Seq:%d\n", icmphdr->icmp_type, icmphdr->icmp_code,
-                   ntohs(icmphdr->icmp_hun.ih_idseq.icd_id), ntohs(icmphdr->icmp_hun.ih_idseq.icd_seq));
-            printf("+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n\n");
-            packets += 1;
+        // case IPPROTO_ICMP:  no extra code is necessary for icmp
+        default:
+            std::cout << "not supported..." << std::endl;
+            return;
             break;
     }
+    std::cout << std::endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -200,6 +212,7 @@ int main(int argc, char *argv[]) {
         std::cerr << "handle couldn't be created!" << std::endl;
         exit(1);
     }
+    signal(SIGINT, cleanup);
     if (pcap_datalink(handle) != DLT_EN10MB) {
         std::cerr << "only ethernet is supported!" << std::endl;
         exit(1);
@@ -290,15 +303,14 @@ int main(int argc, char *argv[]) {
     }
     if (pcap_setfilter(handle, &fp) == -1) {
         std::cerr << "cannot install filter!" << std::endl;
-        return (1);
+        return 1;
     }
 
     // Start the packet capture with a set count or continually if the count is 0.
     if (pcap_loop(handle, num, packet_handler, (u_char *)NULL) < 0) {
-        fprintf(stderr, "pcap_loop failed: %s\n", pcap_geterr(handle));
-        return -1;
+        std::cerr << "pcap_loop failed: " << pcap_geterr(handle) << std::endl;
+        return 1;
     }
-    pcap_close(handle);
-    printf("DONE!\n");
+    cleanup(1);
     return 0;
 }
