@@ -1,5 +1,6 @@
-#include "argparse/argparse.hpp"
+#include <arpa/inet.h>
 #include <net/ethernet.h>
+#include <net/if_arp.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
@@ -8,10 +9,9 @@
 #include <stdio.h>
 #include <string.h>
 
-/*TODO
-pridat toto do dokumentace, spolu s MIT licenci samotnou(v doc na ni muze byt jenom odkaz ale musi byt includnuta s projektem)
-"This software uses the argparse library, which is licensed under the MIT license. The argparse library is Copyright (c) 2017-2022 Parthasarathi Ranganathan."
-*/
+// This software uses the argparse library, which is licensed under the MIT license. The argparse library is Copyright (c) 2017-2022 Parthasarathi Ranganathan.
+// MIT licence can be found in ./argparse/LICENCE
+#include "argparse/argparse.hpp"
 
 pcap_t *handle;
 int hdrlen = 14; // eth. header size
@@ -66,36 +66,63 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *packethdr, const u_c
     packetptr += hdrlen;
     iphdr = (struct ip *)packetptr;
 
-    std::string source_ip = inet_ntoa(iphdr->ip_src);
-    std::string dest_ip = inet_ntoa(iphdr->ip_dst);
+    std::string source_ip;
+    std::string dest_ip;
 
     packetptr += 4 * iphdr->ip_hl;
     char src_mac[18], dst_mac[18];
-    sprintf(src_mac, "%02X:%02X:%02X:%02X:%02X:%02X", ethhdr->ether_shost[0], ethhdr->ether_shost[1], ethhdr->ether_shost[2],
-            ethhdr->ether_shost[3], ethhdr->ether_shost[4], ethhdr->ether_shost[5]);
-    sprintf(dst_mac, "%02X:%02X:%02X:%02X:%02X:%02X", ethhdr->ether_dhost[0], ethhdr->ether_dhost[1], ethhdr->ether_dhost[2],
-            ethhdr->ether_dhost[3], ethhdr->ether_dhost[4], ethhdr->ether_dhost[5]);
-    std::cout << "Timestamp: " << std::put_time(std::localtime(&packethdr->ts.tv_sec), "%FT%T") << "." << std::setw(3) << std::setfill('0') << std::to_string(packethdr->ts.tv_usec).substr(0, 3) << "+01:00" << std::endl;
-    std::cout << "src MAC: " << src_mac << std::endl;
-    std::cout << "dst MAC: " << dst_mac << std::endl;
-    std::cout << "frame length: " << packethdr->caplen << std::endl;
-    std::cout << "src IP: " << source_ip << std::endl;
-    std::cout << "dst IP: " << dest_ip << std::endl;
 
     switch (iphdr->ip_p) {
+        case IPPROTO_ICMP:
+            source_ip = inet_ntoa(iphdr->ip_src);
+            dest_ip = inet_ntoa(iphdr->ip_dst);
+            sprintf(src_mac, "%02X:%02X:%02X:%02X:%02X:%02X", ethhdr->ether_shost[0], ethhdr->ether_shost[1], ethhdr->ether_shost[2],
+                    ethhdr->ether_shost[3], ethhdr->ether_shost[4], ethhdr->ether_shost[5]);
+            sprintf(dst_mac, "%02X:%02X:%02X:%02X:%02X:%02X", ethhdr->ether_dhost[0], ethhdr->ether_dhost[1], ethhdr->ether_dhost[2],
+                    ethhdr->ether_dhost[3], ethhdr->ether_dhost[4], ethhdr->ether_dhost[5]);
+            std::cout << "Timestamp: " << std::put_time(std::localtime(&packethdr->ts.tv_sec), "%FT%T") << "." << std::setw(3) << std::setfill('0') << std::to_string(packethdr->ts.tv_usec).substr(0, 3) << "+01:00" << std::endl;
+            std::cout << "src MAC: " << src_mac << std::endl;
+            std::cout << "dst MAC: " << dst_mac << std::endl;
+            std::cout << "frame length: " << packethdr->caplen << std::endl;
+            std::cout << "src IP: " << source_ip << std::endl;
+            std::cout << "dst IP: " << dest_ip << std::endl;
+            break;
         case IPPROTO_TCP:
+            source_ip = inet_ntoa(iphdr->ip_src);
+            dest_ip = inet_ntoa(iphdr->ip_dst);
             tcphdr = (struct tcphdr *)packetptr;
-            
+            sprintf(src_mac, "%02X:%02X:%02X:%02X:%02X:%02X", ethhdr->ether_shost[0], ethhdr->ether_shost[1], ethhdr->ether_shost[2],
+                    ethhdr->ether_shost[3], ethhdr->ether_shost[4], ethhdr->ether_shost[5]);
+            sprintf(dst_mac, "%02X:%02X:%02X:%02X:%02X:%02X", ethhdr->ether_dhost[0], ethhdr->ether_dhost[1], ethhdr->ether_dhost[2],
+                    ethhdr->ether_dhost[3], ethhdr->ether_dhost[4], ethhdr->ether_dhost[5]);
+            std::cout << "Timestamp: " << std::put_time(std::localtime(&packethdr->ts.tv_sec), "%FT%T") << "." << std::setw(3) << std::setfill('0') << std::to_string(packethdr->ts.tv_usec).substr(0, 3) << "+01:00" << std::endl;
+            std::cout << "src MAC: " << src_mac << std::endl;
+            std::cout << "dst MAC: " << dst_mac << std::endl;
+            std::cout << "frame length: " << packethdr->caplen << std::endl;
+            std::cout << "src IP: " << source_ip << std::endl;
+            std::cout << "dst IP: " << dest_ip << std::endl;
+
             std::cout << "src port: " << ntohs(tcphdr->th_sport) << std::endl;
             std::cout << "dst port: " << ntohs(tcphdr->th_dport) << std::endl;
             break;
         case IPPROTO_UDP:
+            source_ip = inet_ntoa(iphdr->ip_src);
+            dest_ip = inet_ntoa(iphdr->ip_dst);
             udphdr = (struct udphdr *)packetptr;
-            
+            sprintf(src_mac, "%02X:%02X:%02X:%02X:%02X:%02X", ethhdr->ether_shost[0], ethhdr->ether_shost[1], ethhdr->ether_shost[2],
+                    ethhdr->ether_shost[3], ethhdr->ether_shost[4], ethhdr->ether_shost[5]);
+            sprintf(dst_mac, "%02X:%02X:%02X:%02X:%02X:%02X", ethhdr->ether_dhost[0], ethhdr->ether_dhost[1], ethhdr->ether_dhost[2],
+                    ethhdr->ether_dhost[3], ethhdr->ether_dhost[4], ethhdr->ether_dhost[5]);
+            std::cout << "Timestamp: " << std::put_time(std::localtime(&packethdr->ts.tv_sec), "%FT%T") << "." << std::setw(3) << std::setfill('0') << std::to_string(packethdr->ts.tv_usec).substr(0, 3) << "+01:00" << std::endl;
+            std::cout << "src MAC: " << src_mac << std::endl;
+            std::cout << "dst MAC: " << dst_mac << std::endl;
+            std::cout << "frame length: " << packethdr->caplen << std::endl;
+            std::cout << "src IP: " << source_ip << std::endl;
+            std::cout << "dst IP: " << dest_ip << std::endl;
+
             std::cout << "src port: " << ntohs(udphdr->uh_sport) << std::endl;
             std::cout << "dst port: " << ntohs(udphdr->uh_dport) << std::endl;
             break;
-        // case IPPROTO_ICMP:  no extra code is necessary for icmp
         default:
             std::cout << "not supported..." << std::endl;
             return;
